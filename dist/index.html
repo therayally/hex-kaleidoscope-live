@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hex Kaleidoscope Live</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: ui-monospace, monospace; color: #ddd; }
+  canvas { position: fixed; display: block; width: 100vw; height: 100vh; }
+
+  #adminToggle {
+    position: fixed; top: 12px; right: 12px; z-index: 10;
+    padding: 8px 14px;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.2); border-radius: 8px;
+    color: #fff; font: 11px ui-monospace, monospace;
+    text-decoration: none; cursor: pointer;
+  }
+  #adminToggle:hover { background: rgba(20,20,20,0.9); }
+  body.admin #adminToggle { display: none; }
+
+  #admin {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 320px;
+    background: rgba(0,0,0,0.85); backdrop-filter: blur(12px);
+    border-left: 1px solid rgba(255,255,255,0.15);
+    color: #eee; font: 11px ui-monospace, monospace;
+    overflow-y: auto; padding: 14px; z-index: 50;
+    display: none;
+  }
+  body.admin #admin { display: block; }
+  #admin h1 { font-size: 13px; margin: 0 0 14px 0; letter-spacing: 0.08em; text-transform: uppercase; }
+  #admin .group { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  #admin .group:last-child { border-bottom: none; }
+  #admin label { display: block; font-size: 10px; opacity: 0.7; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  #admin input[type=range] { width: 100%; margin: 4px 0 8px 0; accent-color: #2bd17e; }
+  #admin input[type=color] { width: 32px; height: 22px; padding: 0; border: 1px solid #444; border-radius: 3px; vertical-align: middle; margin-left: 6px; cursor: pointer; }
+  #admin .row { display: flex; gap: 6px; align-items: center; }
+  #admin .val { font-size: 10px; opacity: 0.7; min-width: 32px; text-align: right; }
+  #admin .palette { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 4px; }
+  #admin .palette button {
+    height: 22px; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;
+    cursor: pointer; padding: 0; background: none;
+  }
+  #admin .palette button.active { border-color: #fff; box-shadow: 0 0 0 2px #2bd17e; }
+  #admin select { background: #1a0e25; color: #eee; border: 1px solid #444; border-radius: 4px; padding: 4px 6px; font: 11px ui-monospace; width: 100%; }
+  #admin .close {
+    position: absolute; top: 8px; right: 12px;
+    background: none; border: none; color: #aaa; font-size: 18px; cursor: pointer;
+  }
+  #admin .close:hover { color: #fff; }
+  #admin .seed {
+    width: 100%; padding: 8px; margin-top: 8px;
+    background: rgba(43,209,126,0.2); border: 1px solid rgba(43,209,126,0.4);
+    color: #fff; border-radius: 4px; cursor: pointer;
+  }
+</style>
+  <script type="module" crossorigin src="/assets/index-CODujAHN.js"></script>
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+
+<a id="adminToggle" href="?admin=1">⚙ admin</a>
+
+<div id="admin">
+  <button class="close" onclick="window.location.href=window.location.pathname">×</button>
+  <h1>Hex Kaleidoscope · Controls</h1>
+
+  <div class="group">
+    <label>Mirror Count <span class="val" id="vMirrors">6</span></label>
+    <input type="range" id="mirrors" min="3" max="12" value="6" step="1" />
+    <label>Speed <span class="val" id="vSpeed">0.6</span></label>
+    <input type="range" id="speed" min="0" max="3" value="0.6" step="0.05" />
+    <label>Zoom Speed <span class="val" id="vZoom">0.3</span></label>
+    <input type="range" id="zoom" min="0" max="2" value="0.3" step="0.05" />
+    <label>Rotation <span class="val" id="vRot">0.1</span></label>
+    <input type="range" id="rot" min="-0.5" max="0.5" value="0.1" step="0.01" />
+  </div>
+
+  <div class="group">
+    <label>Color Palette</label>
+    <div class="palette" id="palettes"></div>
+  </div>
+
+  <div class="group">
+    <label>Brightness <span class="val" id="vBright">0.85</span></label>
+    <input type="range" id="bright" min="0" max="2" value="0.85" step="0.05" />
+    <label>Contrast <span class="val" id="vContrast">1.4</span></label>
+    <input type="range" id="contrast" min="0" max="3" value="1.4" step="0.05" />
+    <label>Hue Shift <span class="val" id="vHueShift">0</span></label>
+    <input type="range" id="hueShift" min="0" max="6.28" value="0" step="0.05" />
+    <label>Background</label>
+    <div class="row">
+      <input type="color" id="bg1" value="#0a0010" />
+      <input type="color" id="bg2" value="#1a0020" />
+    </div>
+  </div>
+
+  <button class="seed" id="seedBtn">↻ Reseed</button>
+</div>
+
+</body>
+</html>
