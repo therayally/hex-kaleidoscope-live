@@ -17,10 +17,10 @@ out vec4 fragColor;
 
 uniform float u_time;
 uniform vec2 u_resolution;
-uniform float u_mirrors;     // 6, 8, 12 etc
-uniform float u_speed;       // forward flight speed
-uniform float u_zoom;        // zoom speed
-uniform float u_rot;         // rotation speed
+uniform float u_mirrors;
+uniform float u_speed;
+uniform float u_zoom;
+uniform float u_rot;
 uniform float u_bright;
 uniform float u_contrast;
 uniform float u_hueShift;
@@ -28,7 +28,6 @@ uniform vec3 u_bg1;
 uniform vec3 u_bg2;
 uniform float u_seed;
 
-// hash for noise
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
   p += dot(p, p + 45.32);
@@ -56,28 +55,21 @@ float fbm(vec2 p) {
   return v;
 }
 
-// Hexagonal / N-fold kaleidoscope fold
-// The technique: take UV, convert to polar, fold angle by N segments with mirror reflection
-// Then sample a procedural source at the folded position.
 vec2 kaleido(vec2 p, float n) {
   float r = length(p);
   float a = atan(p.y, p.x);
   float seg = 6.2831853 / n;
   a = mod(a + u_time * 0.05, seg);
-  // mirror fold
   a = abs(a - seg * 0.5);
   return vec2(cos(a), sin(a)) * r;
 }
 
-// Optional rotation for variety
 vec2 rot(vec2 p, float a) {
   float c = cos(a), s = sin(a);
   return mat2(c, -s, s, c) * p;
 }
 
-// Color palette generator
 vec3 palette(float t) {
-  // Neon rainbow palette: red->orange->yellow->green->cyan->blue->magenta
   vec3 a = vec3(0.5);
   vec3 b = vec3(0.5);
   vec3 c = vec3(1.0);
@@ -89,56 +81,46 @@ void main() {
   vec2 uv = (v_uv - 0.5) * 2.0;
   uv.x *= u_resolution.x / u_resolution.y;
 
-  // Continuous zoom + rotation + translation (infinity effect)
   float t = u_time * u_speed;
   vec2 p = uv;
   p = rot(p, t * u_rot);
-  // The classic "infinite zoom" technique: scale up exponentially with time
-  // and sample a self-similar source at the zoomed-in coords
   float zoom = pow(1.4, t * u_zoom);
   p *= zoom;
-  // The zoom + kaleido combo: sample fbm at the folded, zoomed position
   vec2 k = kaleido(p, u_mirrors);
 
-  // Layered FBM for the "particle cluster" look
-  vec2 q = k * 1.5 + vec2(u_seed * 7.13, u_seed * 3.91);
+  // SHARP LINES: thinner sample, harder edge detection, minimal blur
+  vec2 q = k * 1.2 + vec2(u_seed * 7.13, u_seed * 3.91);
+
+  // Higher-frequency FBM - more detail in the patterns
   float n = fbm(q);
-  float n2 = fbm(q * 3.7 + 13.0);
-  float n3 = fbm(q * 7.3 + 27.0);
+  float n2 = fbm(q * 3.0 + 13.0);
+  float n3 = fbm(q * 6.5 + 27.0);
 
-  // "Particle cluster" effect: bright outlines where fbm has steep gradient
-  float grad = abs(fbm(q * 2.0) - n);
-  float cluster = 1.0 - smoothstep(0.0, 0.15, grad);
-  cluster = pow(cluster, 1.8);
+  // Sharp hex outlines: difference between detail levels, very tight threshold
+  float edge = 1.0 - smoothstep(0.005, 0.04, abs(n2 - n));
+  float edge2 = 1.0 - smoothstep(0.005, 0.03, abs(n3 - n2));
+  float lines = max(edge, edge2 * 0.8);
 
-  // Edge detection for sharp hex outlines (the bright outlines in the video)
-  float edge = 1.0 - smoothstep(0.0, 0.04, abs(n2 - n3));
+  // Sparse bright points (the particle clusters from the video)
+  float cluster = 1.0 - smoothstep(0.0, 0.08, abs(fbm(q * 1.5) - n));
+  cluster = pow(cluster, 3.0) * 0.4;  // less blurry, smaller
 
-  // Combine
-  float t_pal = n + u_time * 0.03 + u_hueShift / 6.2832;
+  // Color from palette - hue based on position + time
+  float t_pal = length(k) * 0.3 + n * 0.4 + u_time * 0.04 + u_hueShift / 6.2832;
   vec3 col = palette(t_pal);
 
-  // Bright neon glow
-  float glow = pow(n, 4.0) * 1.5;
-  glow += cluster * 0.8;
-  glow += edge * 1.2;
-
-  vec3 finalColor = col * glow;
-
-  // Add some warm highlights
-  finalColor += vec3(1.0, 0.8, 0.4) * cluster * 0.3;
+  // SHARP final: just lines + sparse clusters, no broad glow
+  vec3 finalColor = col * lines * 1.6;
+  finalColor += col * cluster * 1.0;
 
   // Background gradient
-  vec2 bgUV = v_uv;
-  float bgT = bgUV.y;
-  vec3 bg = mix(u_bg2, u_bg1, bgT);
-  bg += col * glow * 0.1; // subtle color in background
+  vec3 bg = mix(u_bg2, u_bg1, v_uv.y);
+  bg += col * lines * 0.04;  // very subtle color hint
 
-  // Composite
   vec3 final = bg + finalColor * u_bright * u_contrast;
 
-  // Vignette
-  float vig = smoothstep(1.4, 0.5, length(uv));
+  // Tight vignette
+  float vig = smoothstep(1.6, 0.4, length(uv));
   final *= vig;
 
   fragColor = vec4(final, 1.0);
